@@ -175,6 +175,13 @@ Mode *Copter::mode_from_mode_num(const Mode::Number mode)
             break;
 #endif
 
+#if MODE_ALPHABET_ENABLED == ENABLED
+    // アルファベット飛行用のモード(コース3)
+        case Mode::Number::ALPHABET:
+            ret = &mode_alphabet;
+            break;
+#endif
+
         default:
             break;
     }

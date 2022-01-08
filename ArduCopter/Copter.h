@@ -218,6 +218,7 @@ public:
     friend class ModeZigZag;
     friend class ModeAutorotate;
     friend class ModeTurtle;
+    friend class ModeAlphabet;      // アルファベット飛行用のモード(コース3)
 
     Copter(void);
 
@@ -986,6 +987,9 @@ private:
 #endif
 #if MODE_TURTLE_ENABLED == ENABLED
     ModeTurtle mode_turtle;
+#endif
+#if MODE_ALPHABET_ENABLED == ENABLED
+    ModeAlphabet mode_alphabet;
 #endif
 
     // mode.cpp
