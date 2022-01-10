@@ -1,5 +1,11 @@
 // アルファベット飛行用のモード(コース3), Guidedモードのコピペ
 #include "Copter.h"
+#include <stdio.h>  //print関数を使用するため saki
+#include <array>   // アルファベット軌跡保存のため saki
+#include <cmath>    // sqrt使うため saki
+
+
+
 
 #if MODE_ALPHABET_ENABLED == ENABLED
 
@@ -34,6 +40,27 @@ struct Guided_Limit {
     Vector3f start_pos; // start position as a distance from home in cm.  used for checking horiz_max limit
 } guided_limit_alph;
 
+
+
+// アルファベット飛行の目標位置リスト "A"
+std::array<std::array<double, 3>, 9> alph_pos_target_arr{ {
+    { 0, 0, 2000 },
+    { -200, 0, 2000 },
+    { -700, 1300, 2000 },
+    { -800, 1300, 2000 },
+    { -1100, 500, 2000 },
+    { -700, 500, 2000 },
+    { -1100, 500, 2000 },
+    { -1300, 0, 2000 },
+    { -1500, 0, 2000 }
+ } };
+
+// 目標位置と現在位置の距離(XY平面)
+float target_distance = 0;
+float x_ref = 0;
+float y_ref = 0;
+float z_ref = 0;
+
 // init - initialise guided controller
 bool ModeAlphabet::init(bool ignore_checks)
 {
@@ -42,6 +69,7 @@ bool ModeAlphabet::init(bool ignore_checks)
     guided_vel_target_cms.zero();
     guided_accel_target_cmss.zero();
     send_notification = false;
+
     return true;
 }
 
@@ -49,44 +77,10 @@ bool ModeAlphabet::init(bool ignore_checks)
 // should be called at 100hz or more
 void ModeAlphabet::run()
 {
-    // call the correct auto controller
-    switch (guided_mode) {
 
-    case SubMode::TakeOff:
-        // run takeoff controller
-        takeoff_run();
-        break;
+    // アルファベット飛行時には，位置制御しか使わない，saki
+    pos_control_run();
 
-    case SubMode::WP:
-        // run waypoint controller
-        wp_control_run();
-        if (send_notification && wp_nav->reached_wp_destination()) {
-            send_notification = false;
-            gcs().send_mission_item_reached_message(0);
-        }
-        break;
-
-    case SubMode::Pos:
-        // run position controller
-        pos_control_run();
-        break;
-
-    case SubMode::Accel:
-        accel_control_run();
-        break;
-
-    case SubMode::VelAccel:
-        velaccel_control_run();
-        break;
-
-    case SubMode::PosVelAccel:
-        posvelaccel_control_run();
-        break;
-
-    case SubMode::Angle:
-        angle_control_run();
-        break;
-    }
  }
 
 bool ModeAlphabet::allows_arming(AP_Arming::Method method) const
@@ -687,11 +681,14 @@ void ModeAlphabet::pos_control_run()
     if (guided_pos_terrain_alt_alph) {
         pos_offset_z_buffer = MIN(copter.wp_nav->get_terrain_margin() * 100.0, 0.5 * fabsf(guided_pos_target_cm.z));
     }
-    pos_control->input_pos_xyz(guided_pos_target_cm, terr_offset, pos_offset_z_buffer);
 
-    // run position controllers
-    pos_control->update_xy_controller();
-    pos_control->update_z_controller();
+
+    // アルファベット飛行するための関数　saki
+    alph_pos_control();
+    // pos_control->input_pos_xyz(guided_pos_target_cm, terr_offset, pos_offset_z_buffer);
+    // // run position controllers
+    // pos_control->update_xy_controller();
+    // pos_control->update_z_controller();
 
     // call attitude controller
     if (auto_yaw.mode() == AUTO_YAW_HOLD) {
@@ -1173,5 +1170,39 @@ uint32_t ModeAlphabet::get_timeout_ms() const
 {
     return MAX(copter.g2.guided_timeout, 0.1) * 1000;
 }
+
+int alph_counter = 0;
+void ModeAlphabet::alph_pos_control(){
+    /* アルファベット飛行用の位置指令を計算 saki
+     *
+     */
+
+    // 現在位置の取得(ホームポジション基準)
+    const Vector3f& curr_pos = inertial_nav.get_position_neu_cm();
+    if(target_distance < 30){
+        alph_counter++;
+    }
+
+    x_ref = alph_pos_target_arr[alph_counter][0];
+    y_ref = alph_pos_target_arr[alph_counter][1];
+    z_ref = alph_pos_target_arr[alph_counter][2];
+    
+    
+    
+    target_distance = sqrt(pow(curr_pos.x-x_ref,2) + pow(curr_pos.y-y_ref,2));
+    
+
+
+
+ 
+    ::printf("x = %f  y = %f  z= %f  distance = %f xref = %f yref = %f\n",curr_pos.x,curr_pos.y,curr_pos.z,target_distance,x_ref,y_ref);
+    pos_control->input_pos_xyz({x_ref,y_ref,z_ref}, 0, 0);
+     // run position controllers
+    pos_control->update_xy_controller();
+    pos_control->update_z_controller();
+
+}
+
+
 
 #endif
