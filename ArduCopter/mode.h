@@ -1891,6 +1891,8 @@ private:
     void posvelaccel_control_run();
     void set_yaw_state(bool use_yaw, float yaw_cd, bool use_yaw_rate, float yaw_rate_cds, bool relative_angle);
 
+    void alph_pos_control();    // sakiya
+
     // controls which controller is run (pos or vel):
     SubMode guided_mode = SubMode::TakeOff;
     bool send_notification;     // used to send one time notification to ground station
